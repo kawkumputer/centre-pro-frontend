@@ -22,10 +22,7 @@ class LoginPage extends StatelessWidget {
               SnackBar(content: Text(state.message)),
             );
           } else if (state is Authenticated) {
-            // TODO: Navigate to home page once implemented
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Connexion réussie')),
-            );
+            context.go('/home');
           }
         },
         child: Center(

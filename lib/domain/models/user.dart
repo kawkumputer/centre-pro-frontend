@@ -1,9 +1,15 @@
+enum UserRole {
+  ADMIN,
+  PROJECT_MANAGER,
+  USER
+}
+
 class User {
   final int id;
   final String firstName;
   final String lastName;
   final String email;
-  final String role;
+  final UserRole role;
 
   User({
     required this.id,
@@ -15,11 +21,11 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      firstName: json['firstName'],
-      lastName: json['lastName'],
-      email: json['email'],
-      role: json['role'],
+      id: json['id'] as int,
+      firstName: json['firstName'] as String,
+      lastName: json['lastName'] as String,
+      email: json['email'] as String,
+      role: _parseRole(json['role'] as String),
     );
   }
 
@@ -29,7 +35,23 @@ class User {
       'firstName': firstName,
       'lastName': lastName,
       'email': email,
-      'role': role,
+      'role': role.toString().split('.').last,
     };
+  }
+
+  static UserRole _parseRole(String role) {
+    switch (role.toUpperCase()) {
+      case 'ADMIN':
+        return UserRole.ADMIN;
+      case 'PROJECT_MANAGER':
+        return UserRole.PROJECT_MANAGER;
+      default:
+        return UserRole.USER;
+    }
+  }
+
+  @override
+  String toString() {
+    return 'User{id: $id, firstName: $firstName, lastName: $lastName, email: $email, role: $role}';
   }
 }
