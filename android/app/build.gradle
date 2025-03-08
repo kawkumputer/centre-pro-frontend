@@ -2,7 +2,6 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'kotlin-kapt'
-    id 'com.google.gms.google-services'
 }
 
 import org.gradle.api.GradleException
@@ -59,7 +58,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.kawkumputer.centrepro"
+        applicationId "com.kawkumputer.centreeducatif"
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
