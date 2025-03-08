@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../application/auth/auth_bloc.dart';
 import '../../../application/auth/auth_event.dart';
 import '../../../application/auth/auth_state.dart';
+import '../../../core/constants/app_constants.dart';
 
 class LoginPage extends StatelessWidget {
   LoginPage({Key? key}) : super(key: key);
@@ -14,105 +15,191 @@ class LoginPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      body: BlocListener<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
-          } else if (state is Authenticated) {
-            context.go('/home');
-          }
-        },
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Card(
-              elevation: 4,
-              child: Padding(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              theme.colorScheme.primary,
+              theme.colorScheme.secondary,
+            ],
+          ),
+        ),
+        child: BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is AuthError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: theme.colorScheme.error,
+                ),
+              );
+            } else if (state is Authenticated) {
+              context.go('/home');
+            }
+          },
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'CentrePro',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+                child: Card(
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Container(
+                    width: 400,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32.0,
+                      vertical: 40.0,
                     ),
-                    const SizedBox(height: 32),
-                    FormBuilder(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          FormBuilderTextField(
-                            name: 'email',
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: FormBuilderValidators.compose([
-                              FormBuilderValidators.required(errorText: 'Ce champ est requis'),
-                              FormBuilderValidators.email(errorText: 'Email invalide'),
-                            ]),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Logo temporaire
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: theme.colorScheme.primary.withOpacity(0.1),
                           ),
-                          const SizedBox(height: 16),
-                          FormBuilderTextField(
-                            name: 'password',
-                            decoration: const InputDecoration(
-                              labelText: 'Mot de passe',
-                              border: OutlineInputBorder(),
-                            ),
-                            obscureText: true,
-                            validator: FormBuilderValidators.compose([
-                              FormBuilderValidators.required(errorText: 'Ce champ est requis'),
-                              FormBuilderValidators.minLength(6, errorText: 'Le mot de passe doit contenir au moins 6 caractères'),
-                            ]),
+                          child: Icon(
+                            Icons.school_rounded,
+                            size: 64,
+                            color: theme.colorScheme.primary,
                           ),
-                          const SizedBox(height: 24),
-                          BlocBuilder<AuthBloc, AuthState>(
-                            builder: (context, state) {
-                              return Column(
-                                children: [
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: state is AuthLoading
-                                          ? null
-                                          : () {
-                                              if (_formKey.currentState?.saveAndValidate() ?? false) {
-                                                final values = _formKey.currentState!.value;
-                                                context.read<AuthBloc>().add(
-                                                  LoginEvent(
-                                                    email: values['email'],
-                                                    password: values['password'],
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          AppConstants.appName,
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          AppConstants.loginTitle,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: theme.colorScheme.secondary,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        
+                        // Formulaire
+                        FormBuilder(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              FormBuilderTextField(
+                                name: 'email',
+                                decoration: InputDecoration(
+                                  labelText: AppConstants.emailLabel,
+                                  hintText: AppConstants.emailHint,
+                                  prefixIcon: Icon(
+                                    Icons.email_outlined,
+                                    color: theme.colorScheme.secondary,
+                                  ),
+                                ),
+                                validator: FormBuilderValidators.compose([
+                                  FormBuilderValidators.required(
+                                    errorText: AppConstants.emailRequired,
+                                  ),
+                                  FormBuilderValidators.email(
+                                    errorText: AppConstants.emailInvalid,
+                                  ),
+                                ]),
+                              ),
+                              const SizedBox(height: 20),
+                              FormBuilderTextField(
+                                name: 'password',
+                                decoration: InputDecoration(
+                                  labelText: AppConstants.passwordLabel,
+                                  hintText: AppConstants.passwordHint,
+                                  prefixIcon: Icon(
+                                    Icons.lock_outline,
+                                    color: theme.colorScheme.secondary,
+                                  ),
+                                ),
+                                obscureText: true,
+                                validator: FormBuilderValidators.compose([
+                                  FormBuilderValidators.required(
+                                    errorText: AppConstants.passwordRequired,
+                                  ),
+                                  FormBuilderValidators.minLength(
+                                    6,
+                                    errorText: AppConstants.passwordTooShort,
+                                  ),
+                                ]),
+                              ),
+                              const SizedBox(height: 32),
+                              
+                              // Boutons
+                              BlocBuilder<AuthBloc, AuthState>(
+                                builder: (context, state) {
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: state is AuthLoading
+                                            ? null
+                                            : () {
+                                                if (_formKey.currentState?.saveAndValidate() ?? false) {
+                                                  final values = _formKey.currentState!.value;
+                                                  context.read<AuthBloc>().add(
+                                                    LoginEvent(
+                                                      email: values['email'],
+                                                      password: values['password'],
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 16),
+                                          child: state is AuthLoading
+                                              ? const SizedBox(
+                                                  height: 20,
+                                                  width: 20,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                                   ),
-                                                );
-                                              }
-                                            },
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(12.0),
-                                        child: state is AuthLoading
-                                            ? const CircularProgressIndicator()
-                                            : const Text('Se connecter'),
+                                                )
+                                              : Text(
+                                                  AppConstants.loginButton,
+                                                  style: theme.textTheme.titleLarge?.copyWith(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  TextButton(
-                                    onPressed: () => context.go('/signup'),
-                                    child: const Text("Pas encore de compte ? S'inscrire"),
-                                  ),
-                                ],
-                              );
-                            },
+                                      const SizedBox(height: 16),
+                                      TextButton(
+                                        onPressed: () => context.go('/signup'),
+                                        child: Text(
+                                          AppConstants.signupLink,
+                                          style: theme.textTheme.bodyLarge?.copyWith(
+                                            color: theme.colorScheme.secondary,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
