@@ -10,7 +10,9 @@ class Project {
   final int id;
   final String name;
   final String? description;
+  @JsonKey(fromJson: _dateFromJson, toJson: _dateToJson)
   final DateTime startDate;
+  @JsonKey(fromJson: _nullableDateFromJson, toJson: _dateToJson)
   final DateTime? expectedEndDate;
   final ProjectStatus status;
   final double? initialBudget;
@@ -26,6 +28,25 @@ class Project {
     this.initialBudget,
     required this.owner,
   });
+
+  // Convertisseurs de dates personnalisés pour gérer le format "yyyy-MM-dd"
+  static DateTime _dateFromJson(String date) {
+    // Si la date contient déjà l'heure (format ISO), utiliser DateTime.parse
+    if (date.contains('T')) {
+      return DateTime.parse(date);
+    }
+    // Sinon, ajouter l'heure 00:00:00 pour le format "yyyy-MM-dd"
+    return DateTime.parse('${date}T00:00:00');
+  }
+
+  static String _dateToJson(DateTime date) {
+    return date.toIso8601String().split('T')[0];
+  }
+
+  static DateTime? _nullableDateFromJson(String? date) {
+    if (date == null) return null;
+    return _dateFromJson(date);
+  }
 
   factory Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
 

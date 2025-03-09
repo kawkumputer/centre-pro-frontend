@@ -12,9 +12,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
   final Dio _dio;
   final SharedPreferences _prefs;
 
-  ProjectRepositoryImpl(this._dio, this._prefs) {
-    _dio.options.baseUrl = ApiConfig.baseUrl;
-  }
+  ProjectRepositoryImpl(this._dio, this._prefs);
 
   @override
   Future<Project> createProject({
@@ -27,7 +25,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
   }) async {
     try {
       final response = await _dio.post(
-        '/projects',
+        ApiConfig.projects,
         data: jsonEncode({
           'name': name,
           'description': description,
@@ -36,12 +34,6 @@ class ProjectRepositoryImpl implements ProjectRepository {
           'status': status.toString().split('.').last,
           'initialBudget': initialBudget,
         }),
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-        ),
       );
 
       if (response.statusCode != 201) {
@@ -84,14 +76,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
       }
 
       // Si en ligne, récupérer la dernière version
-      final response = await _dio.get(
-        '/projects/$id',
-        options: Options(
-          headers: {
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      final response = await _dio.get(ApiConfig.project(id));
 
       if (response.statusCode != 200) {
         throw Exception('Erreur lors de la récupération du projet: ${response.statusCode}');
@@ -125,20 +110,15 @@ class ProjectRepositoryImpl implements ProjectRepository {
         return await _getCachedProjects();
       }
 
-      final response = await _dio.get(
-        '/projects',
-        options: Options(
-          headers: {
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      final response = await _dio.get(ApiConfig.projects);
 
       if (response.statusCode != 200) {
         throw Exception('Erreur lors de la récupération des projets: ${response.statusCode}');
       }
 
-      final List<dynamic> projectsJson = response.data;
+      // Extraire les projets du champ 'content' de la réponse paginée
+      final Map<String, dynamic> responseData = response.data;
+      final List<dynamic> projectsJson = responseData['content'] as List<dynamic>;
       final projects = projectsJson.map((json) => Project.fromJson(json)).toList();
 
       // Mettre à jour le cache
@@ -171,7 +151,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
   }) async {
     try {
       final response = await _dio.put(
-        '/projects/$id',
+        ApiConfig.project(id),
         data: jsonEncode({
           'name': name,
           'description': description,
@@ -180,12 +160,6 @@ class ProjectRepositoryImpl implements ProjectRepository {
           'status': status.toString().split('.').last,
           'initialBudget': initialBudget,
         }),
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-        ),
       );
 
       if (response.statusCode != 200) {
@@ -218,20 +192,16 @@ class ProjectRepositoryImpl implements ProjectRepository {
   @override
   Future<void> deleteProject(int id) async {
     try {
-      final response = await _dio.delete(
-        '/projects/$id',
-        options: Options(
-          headers: {
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      final response = await _dio.delete(ApiConfig.project(id));
 
       if (response.statusCode != 204) {
         throw Exception('Erreur lors de la suppression du projet: ${response.statusCode}');
       }
 
-      await _removeProjectFromCache(id);
+      // Mettre à jour le cache
+      final projects = await _getCachedProjects();
+      projects.removeWhere((p) => p.id == id);
+      await _prefs.setString(_projectsCacheKey, Project.listToJsonString(projects));
     } catch (e) {
       if (e is DioException) {
         if (e.response?.statusCode == 401) {
@@ -249,12 +219,22 @@ class ProjectRepositoryImpl implements ProjectRepository {
     }
   }
 
+  Future<bool> _hasInternetConnection() async {
+    try {
+      // Vérifier la connexion en utilisant un endpoint valide
+      final response = await _dio.head(ApiConfig.projects);
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<List<Project>> _getCachedProjects() async {
-    final jsonString = await _prefs.getString(_projectsCacheKey);
-    if (jsonString == null) {
+    final projectsStr = _prefs.getString(_projectsCacheKey);
+    if (projectsStr == null) {
       return [];
     }
-    return Project.listFromJsonString(jsonString);
+    return Project.listFromJsonString(projectsStr);
   }
 
   Future<void> _updateProjectInCache(Project project) async {
@@ -266,22 +246,5 @@ class ProjectRepositoryImpl implements ProjectRepository {
       projects.add(project);
     }
     await _prefs.setString(_projectsCacheKey, Project.listToJsonString(projects));
-  }
-
-  Future<void> _removeProjectFromCache(int id) async {
-    final projects = await _getCachedProjects();
-    projects.removeWhere((p) => p.id == id);
-    await _prefs.setString(_projectsCacheKey, Project.listToJsonString(projects));
-  }
-
-  Future<bool> _hasInternetConnection() async {
-    try {
-      // Faire une requête HEAD rapide vers le serveur pour vérifier la connexion
-      await _dio.head('/');
-      return true;
-    } catch (e) {
-      developer.log('Erreur de connexion : $e');
-      return false;
-    }
   }
 }

@@ -33,10 +33,26 @@ class DioProvider extends InheritedWidget {
     final dio = Dio(BaseOptions(
       baseUrl: ApiConfig.baseUrl,
       validateStatus: (status) => status! < 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      // Configuration pour les requêtes CORS
+      extra: {
+        'withCredentials': false, // Pas de credentials comme spécifié dans les MEMORIES
+      },
     ));
     
     // Ajouter l'intercepteur d'authentification
     dio.interceptors.add(AuthInterceptor(prefs));
+    
+    // Ajouter un intercepteur pour les logs
+    dio.interceptors.add(LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      requestHeader: true,
+      responseHeader: true,
+    ));
     
     return DioProvider(
       dio: dio,
