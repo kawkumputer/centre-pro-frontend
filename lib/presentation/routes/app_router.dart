@@ -43,15 +43,15 @@ class AppRouter {
           return '/auth/login';
         }
         if (isAuthenticated && (isLoginRoute || isSignupRoute)) {
-          return '/projects'; // Rediriger vers la liste des projets après connexion
-        }
-        // Rediriger la racine vers /projects pour les utilisateurs authentifiés
-        if (isAuthenticated && state.matchedLocation == '/') {
-          return '/projects';
+          return '/'; // Rediriger vers la page d'accueil après connexion
         }
         return null;
       },
       routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const HomePage(),
+        ),
         GoRoute(
           path: '/auth/login',
           builder: (context, state) => LoginPage(),
@@ -85,11 +85,6 @@ class AppRouter {
               ],
             ),
           ],
-        ),
-        // Fallback route qui redirigera vers /projects pour les utilisateurs authentifiés
-        GoRoute(
-          path: '/',
-          builder: (context, state) => const ProjectsPage(),
         ),
       ],
     );

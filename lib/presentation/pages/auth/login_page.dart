@@ -39,7 +39,7 @@ class LoginPage extends StatelessWidget {
                 ),
               );
             } else if (state is Authenticated) {
-              context.go('/home');
+              context.go('/');
             }
           },
           child: SafeArea(
@@ -181,7 +181,7 @@ class LoginPage extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 16),
                                       TextButton(
-                                        onPressed: () => context.go('/signup'),
+                                        onPressed: () => context.go('/auth/signup'),
                                         child: Text(
                                           AppConstants.signupLink,
                                           style: theme.textTheme.bodyLarge?.copyWith(

@@ -25,10 +25,7 @@ class SignupPage extends StatelessWidget {
               SnackBar(content: Text(state.message)),
             );
           } else if (state is Authenticated) {
-            // TODO: Navigate to home page once implemented
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Inscription réussie')),
-            );
+            context.go('/');
           }
         },
         child: Center(
@@ -125,14 +122,21 @@ class SignupPage extends StatelessWidget {
                                       child: Padding(
                                         padding: const EdgeInsets.all(12.0),
                                         child: state is AuthLoading
-                                            ? const CircularProgressIndicator()
+                                            ? const SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                ),
+                                              )
                                             : const Text("S'inscrire"),
                                       ),
                                     ),
                                   ),
                                   const SizedBox(height: 16),
                                   TextButton(
-                                    onPressed: () => context.go('/login'),
+                                    onPressed: () => context.go('/auth/login'),
                                     child: const Text('Déjà un compte ? Se connecter'),
                                   ),
                                 ],

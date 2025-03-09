@@ -60,6 +60,10 @@ class _ProjectsPageState extends State<ProjectsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.home),
+          onPressed: () => context.go('/'),
+        ),
         title: const Text('Projets'),
       ),
       body: _error != null
@@ -206,13 +210,13 @@ class ProjectCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(
                     'Début : ${project.startDate.day}/${project.startDate.month}/${project.startDate.year}',
-                    style: theme.textTheme.bodySmall,
+                    style: theme.textTheme.bodyMedium,
                   ),
                   if (project.expectedEndDate != null) ...[
                     const SizedBox(width: 16),
                     Text(
-                      'Fin prévue : ${project.expectedEndDate!.day}/${project.expectedEndDate!.month}/${project.expectedEndDate!.year}',
-                      style: theme.textTheme.bodySmall,
+                      'Fin : ${project.expectedEndDate!.day}/${project.expectedEndDate!.month}/${project.expectedEndDate!.year}',
+                      style: theme.textTheme.bodyMedium,
                     ),
                   ],
                 ],

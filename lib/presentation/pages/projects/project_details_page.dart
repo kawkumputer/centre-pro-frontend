@@ -4,6 +4,7 @@ import '../../../domain/models/project_status.dart';
 import '../../../domain/repositories/project_repository.dart';
 import '../../../infrastructure/providers/project_repository_provider.dart';
 import '../../widgets/loading_indicator.dart';
+import 'package:go_router/go_router.dart';
 
 class ProjectDetailsPage extends StatefulWidget {
   final String projectId;
@@ -100,6 +101,10 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
     if (_isLoading && _project == null) {
       return Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () => context.go('/'),
+          ),
           title: const Text('Détails du projet'),
         ),
         body: const LoadingIndicator(),
@@ -109,6 +114,10 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () => context.go('/'),
+          ),
           title: const Text('Détails du projet'),
         ),
         body: Center(
@@ -129,6 +138,10 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
     if (_project == null) {
       return Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () => context.go('/'),
+          ),
           title: const Text('Détails du projet'),
         ),
         body: const Center(
@@ -139,6 +152,10 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.home),
+          onPressed: () => context.go('/'),
+        ),
         title: const Text('Détails du projet'),
         actions: [
           IconButton(
