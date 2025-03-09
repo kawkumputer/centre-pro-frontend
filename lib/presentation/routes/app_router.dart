@@ -16,11 +16,11 @@ class AppRouter {
   static GoRouter getRouter(AuthBloc authBloc) {
     return GoRouter(
       refreshListenable: _AuthStateNotifier(authBloc),
-      initialLocation: '/login',
+      initialLocation: '/',
       redirect: (context, state) {
         final authState = authBloc.state;
-        final isLoginRoute = state.matchedLocation == '/login';
-        final isSignupRoute = state.matchedLocation == '/signup';
+        final isLoginRoute = state.matchedLocation.startsWith('/auth');
+        final isSignupRoute = state.matchedLocation == '/auth/signup';
 
         // Vérifier l'état d'authentification
         if (authState is AuthInitial) {
@@ -33,54 +33,64 @@ class AppRouter {
         }
 
         if (authState is AuthError) {
-          return '/login';
+          return '/auth/login';
         }
 
         final isAuthenticated = authState is Authenticated;
         
         // Redirection selon l'état d'authentification
         if (!isAuthenticated && !isLoginRoute && !isSignupRoute) {
-          return '/login';
+          return '/auth/login';
         }
         if (isAuthenticated && (isLoginRoute || isSignupRoute)) {
-          return '/home';
+          return '/';
         }
         return null;
       },
       routes: [
         GoRoute(
-          path: '/login',
-          builder: (context, state) => LoginPage(),
-        ),
-        GoRoute(
-          path: '/signup',
-          builder: (context, state) => SignupPage(),
-        ),
-        GoRoute(
-          path: '/home',
+          path: '/',
           builder: (context, state) => const HomePage(),
         ),
         GoRoute(
           path: '/projects',
           builder: (context, state) => const ProjectsPage(),
+          routes: [
+            GoRoute(
+              path: 'new',
+              builder: (context, state) => const ProjectFormPage(),
+            ),
+            GoRoute(
+              path: ':id',
+              builder: (context, state) {
+                final projectId = state.pathParameters['id']!;
+                return ProjectDetailsPage(projectId: projectId);
+              },
+              routes: [
+                GoRoute(
+                  path: 'edit',
+                  builder: (context, state) {
+                    final projectId = state.pathParameters['id']!;
+                    return ProjectFormPage(projectId: projectId);
+                  },
+                ),
+              ],
+            ),
+          ],
         ),
         GoRoute(
-          path: '/projects/new',
-          builder: (context, state) => const ProjectFormPage(),
-        ),
-        GoRoute(
-          path: '/projects/:id',
-          builder: (context, state) {
-            final project = state.extra as Project;
-            return ProjectDetailsPage(project: project);
-          },
-        ),
-        GoRoute(
-          path: '/projects/:id/edit',
-          builder: (context, state) {
-            final project = state.extra as Project;
-            return ProjectFormPage(project: project);
-          },
+          path: '/auth',
+          builder: (context, state) => LoginPage(),
+          routes: [
+            GoRoute(
+              path: 'login',
+              builder: (context, state) => LoginPage(),
+            ),
+            GoRoute(
+              path: 'signup',
+              builder: (context, state) => SignupPage(),
+            ),
+          ],
         ),
       ],
     );

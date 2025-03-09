@@ -1,40 +1,54 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:form_builder_validators/form_builder_validators.dart';
+import 'package:go_router/go_router.dart';
 import '../../../domain/models/project.dart';
+import '../../../domain/models/project_status.dart';
 import '../../../domain/repositories/project_repository.dart';
+import '../../../infrastructure/providers/project_repository_provider.dart';
+import '../../widgets/loading_indicator.dart';
 
 class ProjectFormPage extends StatefulWidget {
-  final Project? project;
+  final String? projectId;
 
-  const ProjectFormPage({super.key, this.project});
+  const ProjectFormPage({super.key, this.projectId});
 
   @override
   State<ProjectFormPage> createState() => _ProjectFormPageState();
 }
 
 class _ProjectFormPageState extends State<ProjectFormPage> {
-  final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
   late final ProjectRepository _projectRepository;
+  final _formKey = GlobalKey<FormBuilderState>();
+  bool _isLoading = false;
+  String? _error;
+  Project? _project;
 
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
-  late final TextEditingController _initialBudgetController;
   late DateTime _startDate;
   DateTime? _expectedEndDate;
   late ProjectStatus _status;
+  late final TextEditingController _initialBudgetController;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.project?.name);
-    _descriptionController = TextEditingController(text: widget.project?.description);
-    _initialBudgetController = TextEditingController(
-      text: widget.project?.initialBudget?.toString(),
-    );
-    _startDate = widget.project?.startDate ?? DateTime.now();
-    _expectedEndDate = widget.project?.expectedEndDate;
-    _status = widget.project?.status ?? ProjectStatus.DRAFT;
+    _nameController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _startDate = DateTime.now();
+    _status = ProjectStatus.DRAFT;
+    _initialBudgetController = TextEditingController();
+
+    if (widget.projectId != null) {
+      _loadProject();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _projectRepository = ProjectRepositoryProvider.of(context);
   }
 
   @override
@@ -43,6 +57,34 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
     _descriptionController.dispose();
     _initialBudgetController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadProject() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final project = await _projectRepository.getProject(widget.projectId!);
+      setState(() {
+        _project = project;
+        _nameController.text = project.name;
+        _descriptionController.text = project.description ?? '';
+        _startDate = project.startDate;
+        _expectedEndDate = project.expectedEndDate;
+        _status = project.status;
+        _initialBudgetController.text = project.initialBudget?.toString() ?? '';
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
@@ -58,7 +100,6 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
       setState(() {
         if (isStartDate) {
           _startDate = picked;
-          // Si la date de fin est avant la nouvelle date de début, on la réinitialise
           if (_expectedEndDate != null && _expectedEndDate!.isBefore(_startDate)) {
             _expectedEndDate = null;
           }
@@ -70,35 +111,37 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
   }
 
   Future<void> _saveProject() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.saveAndValidate()) {
+      return;
+    }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
     try {
-      final double? initialBudget = _initialBudgetController.text.isNotEmpty
-          ? double.parse(_initialBudgetController.text)
+      final values = _formKey.currentState!.value;
+      final name = values['name'] as String;
+      final description = values['description'] as String?;
+      final initialBudget = values['initialBudget'] != null
+          ? double.tryParse(values['initialBudget'].toString())
           : null;
 
-      if (widget.project == null) {
-        // Création d'un nouveau projet
+      if (_project == null) {
         await _projectRepository.createProject(
-          name: _nameController.text,
-          description: _descriptionController.text.isNotEmpty
-              ? _descriptionController.text
-              : null,
+          name: name,
+          description: description,
           startDate: _startDate,
           expectedEndDate: _expectedEndDate,
           status: _status,
           initialBudget: initialBudget,
         );
       } else {
-        // Mise à jour d'un projet existant
         await _projectRepository.updateProject(
-          widget.project!.id,
-          name: _nameController.text,
-          description: _descriptionController.text.isNotEmpty
-              ? _descriptionController.text
-              : null,
+          _project!.id,
+          name: name,
+          description: description,
           startDate: _startDate,
           expectedEndDate: _expectedEndDate,
           status: _status,
@@ -107,153 +150,150 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
       }
 
       if (mounted) {
-        Navigator.pop(context, true);
+        context.pop(true);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      setState(() {
+        _error = e.toString();
+      });
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.project == null ? 'Nouveau Projet' : 'Modifier le Projet'),
+        title: Text(_project == null ? 'Nouveau projet' : 'Modifier le projet'),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Nom du projet *',
-                hintText: 'Entrez le nom du projet',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Le nom est obligatoire';
-                }
-                if (value.length < 3) {
-                  return 'Le nom doit contenir au moins 3 caractères';
-                }
-                if (value.length > 100) {
-                  return 'Le nom ne doit pas dépasser 100 caractères';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                hintText: 'Entrez une description du projet',
-              ),
-              maxLines: 3,
-              maxLength: 2000,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: () => _selectDate(context, true),
-                    icon: const Icon(Icons.calendar_today),
-                    label: Text(
-                      'Date de début: ${_formatDate(_startDate)}',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: () => _selectDate(context, false),
-                    icon: const Icon(Icons.calendar_today),
-                    label: Text(
-                      'Date de fin: ${_expectedEndDate != null ? _formatDate(_expectedEndDate!) : 'Non définie'}',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<ProjectStatus>(
-              value: _status,
-              decoration: const InputDecoration(
-                labelText: 'Statut *',
-              ),
-              items: ProjectStatus.values.map((status) {
-                return DropdownMenuItem(
-                  value: status,
-                  child: Text(status.displayName),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _status = value);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _initialBudgetController,
-              decoration: const InputDecoration(
-                labelText: 'Budget initial',
-                hintText: 'Entrez le budget initial',
-                prefixText: '\$ ',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-              ],
-              validator: (value) {
-                if (value != null && value.isNotEmpty) {
-                  try {
-                    double.parse(value);
-                  } catch (_) {
-                    return 'Veuillez entrer un montant valide';
-                  }
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _saveProject,
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
+      body: _isLoading
+          ? const Center(child: LoadingIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: FormBuilder(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
                       ),
-                    )
-                  : Text(
-                      widget.project == null ? 'Créer le projet' : 'Enregistrer',
+                    FormBuilderTextField(
+                      name: 'name',
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Nom du projet',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: FormBuilderValidators.compose([
+                        FormBuilderValidators.required(
+                          errorText: 'Le nom est obligatoire',
+                        ),
+                        FormBuilderValidators.minLength(
+                          3,
+                          errorText: 'Le nom doit contenir au moins 3 caractères',
+                        ),
+                        FormBuilderValidators.maxLength(
+                          100,
+                          errorText: 'Le nom ne doit pas dépasser 100 caractères',
+                        ),
+                      ]),
                     ),
+                    const SizedBox(height: 16),
+                    FormBuilderTextField(
+                      name: 'description',
+                      controller: _descriptionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ListTile(
+                            title: const Text('Date de début'),
+                            subtitle: Text(
+                              '${_startDate.day}/${_startDate.month}/${_startDate.year}',
+                            ),
+                            onTap: () => _selectDate(context, true),
+                          ),
+                        ),
+                        Expanded(
+                          child: ListTile(
+                            title: const Text('Date de fin prévue'),
+                            subtitle: _expectedEndDate == null
+                                ? const Text('Non définie')
+                                : Text(
+                                    '${_expectedEndDate!.day}/${_expectedEndDate!.month}/${_expectedEndDate!.year}',
+                                  ),
+                            onTap: () => _selectDate(context, false),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<ProjectStatus>(
+                      value: _status,
+                      decoration: const InputDecoration(
+                        labelText: 'Statut',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: ProjectStatus.values.map((status) {
+                        return DropdownMenuItem(
+                          value: status,
+                          child: Text(status.displayName),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _status = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    FormBuilderTextField(
+                      name: 'initialBudget',
+                      controller: _initialBudgetController,
+                      decoration: const InputDecoration(
+                        labelText: 'Budget initial',
+                        border: OutlineInputBorder(),
+                        suffixText: '€',
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      validator: FormBuilderValidators.compose([
+                        FormBuilderValidators.numeric(
+                          errorText: 'Veuillez entrer un nombre valide',
+                        ),
+                        FormBuilderValidators.min(
+                          0,
+                          errorText: 'Le budget ne peut pas être négatif',
+                        ),
+                      ]),
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton(
+                      onPressed: _saveProject,
+                      child: Text(
+                        _project == null ? 'Créer le projet' : 'Enregistrer les modifications',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
-      ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 }

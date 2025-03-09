@@ -1,9 +1,25 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'user.g.dart';
+
 enum UserRole {
   ADMIN,
   PROJECT_MANAGER,
-  USER
+  USER;
+
+  String get displayName {
+    switch (this) {
+      case UserRole.ADMIN:
+        return 'Administrateur';
+      case UserRole.PROJECT_MANAGER:
+        return 'Chef de projet';
+      case UserRole.USER:
+        return 'Utilisateur';
+    }
+  }
 }
 
+@JsonSerializable()
 class User {
   final int id;
   final String firstName;
@@ -19,39 +35,44 @@ class User {
     required this.role,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) {
+  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
+
+  Map<String, dynamic> toJson() => _$UserToJson(this);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is User &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          firstName == other.firstName &&
+          lastName == other.lastName &&
+          email == other.email &&
+          role == other.role;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      firstName.hashCode ^
+      lastName.hashCode ^
+      email.hashCode ^
+      role.hashCode;
+
+  User copyWith({
+    int? id,
+    String? firstName,
+    String? lastName,
+    String? email,
+    UserRole? role,
+  }) {
     return User(
-      id: json['id'] as int,
-      firstName: json['firstName'] as String,
-      lastName: json['lastName'] as String,
-      email: json['email'] as String,
-      role: _parseRole(json['role'] as String),
+      id: id ?? this.id,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      email: email ?? this.email,
+      role: role ?? this.role,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'firstName': firstName,
-      'lastName': lastName,
-      'email': email,
-      'role': role.toString().split('.').last,
-    };
-  }
-
-  static UserRole _parseRole(String role) {
-    switch (role.toUpperCase()) {
-      case 'ADMIN':
-        return UserRole.ADMIN;
-      case 'PROJECT_MANAGER':
-        return UserRole.PROJECT_MANAGER;
-      default:
-        return UserRole.USER;
-    }
-  }
-
-  @override
-  String toString() {
-    return 'User{id: $id, firstName: $firstName, lastName: $lastName, email: $email, role: $role}';
-  }
+  String get fullName => '$firstName $lastName';
 }

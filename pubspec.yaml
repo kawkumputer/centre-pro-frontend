@@ -17,6 +17,8 @@ dependencies:
   # Réseau et stockage
   dio: ^5.4.0
   shared_preferences: ^2.2.2
+  # Sérialisation JSON
+  json_annotation: ^4.9.0
   # UI
   flutter_form_builder: ^9.1.1
   form_builder_validators: ^11.1.2
@@ -26,6 +28,9 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
+  # Générateurs de code
+  build_runner: ^2.4.8
+  json_serializable: ^6.7.1
 
 flutter:
   uses-material-design: true
