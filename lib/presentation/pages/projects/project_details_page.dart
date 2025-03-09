@@ -16,7 +16,7 @@ class ProjectDetailsPage extends StatefulWidget {
 
 class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
   late final ProjectRepository _projectRepository;
-  bool _isLoading = true;
+  bool _isLoading = false;
   String? _error;
   Project? _project;
 
@@ -34,7 +34,7 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
         _error = null;
       });
 
-      final project = await _projectRepository.getProject(widget.projectId);
+      final project = await _projectRepository.getProject(int.parse(widget.projectId));
       setState(() {
         _project = project;
       });
@@ -62,12 +62,10 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'Supprimer',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-              ),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
             ),
+            child: const Text('Supprimer'),
           ),
         ],
       ),
@@ -99,134 +97,188 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading && _project == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Détails du projet'),
+        ),
+        body: const LoadingIndicator(),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Détails du projet'),
+        ),
+        body: Center(
+          child: Card(
+            color: Theme.of(context).colorScheme.errorContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_project == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Détails du projet'),
+        ),
+        body: const Center(
+          child: Text('Projet non trouvé'),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_project?.name ?? 'Détails du projet'),
-        actions: _project == null
-            ? null
-            : [
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: () async {
-                    final updated = await Navigator.pushNamed(
-                      context,
-                      '/projects/${_project!.id}/edit',
-                    );
-                    if (updated == true) {
-                      _loadProject();
-                    }
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: _deleteProject,
-                ),
-              ],
+        title: const Text('Détails du projet'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () async {
+              final updated = await Navigator.pushNamed(
+                context,
+                '/projects/edit/${_project!.id}',
+              );
+              if (updated == true) {
+                _loadProject();
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: _deleteProject,
+          ),
+        ],
       ),
-      body: _isLoading
-          ? const Center(child: LoadingIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _project!.name,
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadProject,
-                        child: const Text('Réessayer'),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8.0,
+                            vertical: 4.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(_project!.status),
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                          child: Text(
+                            _project!.status.displayName,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_project!.description != null) ...[
+                      const SizedBox(height: 16.0),
+                      Text(
+                        _project!.description!,
+                        style: Theme.of(context).textTheme.bodyLarge,
                       ),
                     ],
-                  ),
-                )
-              : _project == null
-                  ? const Center(
-                      child: Text('Projet non trouvé'),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _project!.name,
-                            style: Theme.of(context).textTheme.headlineMedium,
-                          ),
-                          const SizedBox(height: 16),
-                          if (_project!.description != null) ...[
-                            Text(
-                              'Description',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(_project!.description!),
-                            const SizedBox(height: 16),
-                          ],
-                          Text(
-                            'Statut',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Chip(
-                            label: Text(_project!.status.displayName),
-                            backgroundColor: _getStatusColor(_project!.status),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Dates',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          ListTile(
-                            title: const Text('Date de début'),
-                            subtitle: Text(
-                              '${_project!.startDate.day}/${_project!.startDate.month}/${_project!.startDate.year}',
-                            ),
-                          ),
-                          if (_project!.expectedEndDate != null)
-                            ListTile(
-                              title: const Text('Date de fin prévue'),
-                              subtitle: Text(
-                                '${_project!.expectedEndDate!.day}/${_project!.expectedEndDate!.month}/${_project!.expectedEndDate!.year}',
-                              ),
-                            ),
-                          if (_project!.initialBudget != null) ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              'Budget',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            ListTile(
-                              title: const Text('Budget initial'),
-                              subtitle: Text(
-                                '${_project!.initialBudget!.toStringAsFixed(2)} €',
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16.0),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Informations',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
+                    const SizedBox(height: 16.0),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Date de début'),
+                              const SizedBox(height: 4.0),
+                              Text(
+                                '${_project!.startDate.day}/${_project!.startDate.month}/${_project!.startDate.year}',
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_project!.expectedEndDate != null)
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Date de fin prévue'),
+                                const SizedBox(height: 4.0),
+                                Text(
+                                  '${_project!.expectedEndDate!.day}/${_project!.expectedEndDate!.month}/${_project!.expectedEndDate!.year}',
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (_project!.initialBudget != null) ...[
+                      const SizedBox(height: 16.0),
+                      const Text('Budget initial'),
+                      const SizedBox(height: 4.0),
+                      Text(
+                        '${_project!.initialBudget!.toStringAsFixed(2)} €',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Color _getStatusColor(ProjectStatus status) {
     switch (status) {
       case ProjectStatus.DRAFT:
-        return Colors.grey.shade200;
+        return Colors.grey;
       case ProjectStatus.IN_PROGRESS:
-        return Colors.blue.shade100;
+        return Colors.blue;
       case ProjectStatus.ON_HOLD:
-        return Colors.orange.shade100;
+        return Colors.orange;
       case ProjectStatus.COMPLETED:
-        return Colors.green.shade100;
+        return Colors.green;
       case ProjectStatus.CANCELLED:
-        return Colors.red.shade100;
+        return Colors.red;
     }
   }
 }

@@ -66,7 +66,7 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
         _error = null;
       });
 
-      final project = await _projectRepository.getProject(widget.projectId!);
+      final project = await _projectRepository.getProject(int.parse(widget.projectId!));
       setState(() {
         _project = project;
         _nameController.text = project.name;

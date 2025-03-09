@@ -7,7 +7,7 @@ part 'project.g.dart';
 
 @JsonSerializable()
 class Project {
-  final String id;
+  final int id;
   final String name;
   final String? description;
   final DateTime startDate;
@@ -68,7 +68,7 @@ class Project {
       owner.hashCode;
 
   Project copyWith({
-    String? id,
+    int? id,
     String? name,
     String? description,
     DateTime? startDate,

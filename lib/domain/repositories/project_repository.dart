@@ -11,12 +11,12 @@ abstract class ProjectRepository {
     double? initialBudget,
   });
 
-  Future<Project> getProject(String id);
+  Future<Project> getProject(int id);
 
   Future<List<Project>> getProjects();
 
   Future<Project> updateProject(
-    String id, {
+    int id, {
     required String name,
     String? description,
     required DateTime startDate,
@@ -25,5 +25,5 @@ abstract class ProjectRepository {
     double? initialBudget,
   });
 
-  Future<void> deleteProject(String id);
+  Future<void> deleteProject(int id);
 }

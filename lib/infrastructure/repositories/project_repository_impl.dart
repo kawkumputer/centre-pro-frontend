@@ -69,7 +69,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
   }
 
   @override
-  Future<Project> getProject(String id) async {
+  Future<Project> getProject(int id) async {
     try {
       // Essayer d'abord de récupérer depuis le cache
       final cachedProjects = await _getCachedProjects();
@@ -161,7 +161,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
 
   @override
   Future<Project> updateProject(
-    String id, {
+    int id, {
     required String name,
     String? description,
     required DateTime startDate,
@@ -200,14 +200,14 @@ class ProjectRepositoryImpl implements ProjectRepository {
         if (e.response?.statusCode == 400) {
           throw Exception('Données invalides : ${e.response?.data['message']}');
         }
-        if (e.response?.statusCode == 404) {
-          throw Exception('Projet non trouvé');
-        }
         if (e.response?.statusCode == 401) {
           throw Exception('Non autorisé. Veuillez vous reconnecter.');
         }
         if (e.response?.statusCode == 403) {
           throw Exception("Vous n'avez pas les permissions nécessaires.");
+        }
+        if (e.response?.statusCode == 404) {
+          throw Exception('Projet non trouvé');
         }
       }
       developer.log('Erreur lors de la mise à jour du projet : ${e.toString()}');
@@ -216,7 +216,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
   }
 
   @override
-  Future<void> deleteProject(String id) async {
+  Future<void> deleteProject(int id) async {
     try {
       final response = await _dio.delete(
         '/projects/$id',
@@ -234,14 +234,14 @@ class ProjectRepositoryImpl implements ProjectRepository {
       await _removeProjectFromCache(id);
     } catch (e) {
       if (e is DioException) {
-        if (e.response?.statusCode == 404) {
-          throw Exception('Projet non trouvé');
-        }
         if (e.response?.statusCode == 401) {
           throw Exception('Non autorisé. Veuillez vous reconnecter.');
         }
         if (e.response?.statusCode == 403) {
           throw Exception("Vous n'avez pas les permissions nécessaires.");
+        }
+        if (e.response?.statusCode == 404) {
+          throw Exception('Projet non trouvé');
         }
       }
       developer.log('Erreur lors de la suppression du projet : ${e.toString()}');
@@ -268,7 +268,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
     await _prefs.setString(_projectsCacheKey, Project.listToJsonString(projects));
   }
 
-  Future<void> _removeProjectFromCache(String id) async {
+  Future<void> _removeProjectFromCache(int id) async {
     final projects = await _getCachedProjects();
     projects.removeWhere((p) => p.id == id);
     await _prefs.setString(_projectsCacheKey, Project.listToJsonString(projects));
