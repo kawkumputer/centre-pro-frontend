@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/api_config.dart';
@@ -28,7 +27,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
   }) async {
     try {
       final response = await _dio.post(
-        '/api/projects',
+        '/projects',
         data: jsonEncode({
           'name': name,
           'description': description,
@@ -50,7 +49,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
       }
 
       final project = Project.fromJson(response.data);
-      _updateProjectInCache(project);
+      await _updateProjectInCache(project);
       return project;
     } catch (e) {
       if (e is DioException) {
@@ -64,6 +63,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
           throw Exception("Vous n'avez pas les permissions nécessaires.");
         }
       }
+      developer.log('Erreur lors de la création du projet : ${e.toString()}');
       throw Exception('Erreur lors de la création du projet : ${e.toString()}');
     }
   }
@@ -72,7 +72,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
   Future<Project> getProject(String id) async {
     try {
       // Essayer d'abord de récupérer depuis le cache
-      final cachedProjects = _getCachedProjects();
+      final cachedProjects = await _getCachedProjects();
       final cachedProject = cachedProjects.firstWhere(
         (p) => p.id == id,
         orElse: () => throw Exception('Projet non trouvé dans le cache'),
@@ -85,7 +85,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
 
       // Si en ligne, récupérer la dernière version
       final response = await _dio.get(
-        '/api/projects/$id',
+        '/projects/$id',
         options: Options(
           headers: {
             'Accept': 'application/json',
@@ -98,7 +98,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
       }
 
       final project = Project.fromJson(response.data);
-      _updateProjectInCache(project);
+      await _updateProjectInCache(project);
       return project;
     } catch (e) {
       if (e is DioException) {
@@ -112,6 +112,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
           throw Exception("Vous n'avez pas les permissions nécessaires.");
         }
       }
+      developer.log('Erreur lors de la récupération du projet : ${e.toString()}');
       throw Exception('Erreur lors de la récupération du projet : ${e.toString()}');
     }
   }
@@ -121,11 +122,11 @@ class ProjectRepositoryImpl implements ProjectRepository {
     try {
       // En mode hors-ligne, retourner les projets du cache
       if (!await _hasInternetConnection()) {
-        return _getCachedProjects();
+        return await _getCachedProjects();
       }
 
       final response = await _dio.get(
-        '/api/projects',
+        '/projects',
         options: Options(
           headers: {
             'Accept': 'application/json',
@@ -153,6 +154,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
           throw Exception("Vous n'avez pas les permissions nécessaires.");
         }
       }
+      developer.log('Erreur lors de la récupération des projets : ${e.toString()}');
       throw Exception('Erreur lors de la récupération des projets : ${e.toString()}');
     }
   }
@@ -169,7 +171,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
   }) async {
     try {
       final response = await _dio.put(
-        '/api/projects/$id',
+        '/projects/$id',
         data: jsonEncode({
           'name': name,
           'description': description,
@@ -191,7 +193,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
       }
 
       final project = Project.fromJson(response.data);
-      _updateProjectInCache(project);
+      await _updateProjectInCache(project);
       return project;
     } catch (e) {
       if (e is DioException) {
@@ -208,6 +210,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
           throw Exception("Vous n'avez pas les permissions nécessaires.");
         }
       }
+      developer.log('Erreur lors de la mise à jour du projet : ${e.toString()}');
       throw Exception('Erreur lors de la mise à jour du projet : ${e.toString()}');
     }
   }
@@ -216,7 +219,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
   Future<void> deleteProject(String id) async {
     try {
       final response = await _dio.delete(
-        '/api/projects/$id',
+        '/projects/$id',
         options: Options(
           headers: {
             'Accept': 'application/json',
@@ -228,7 +231,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
         throw Exception('Erreur lors de la suppression du projet: ${response.statusCode}');
       }
 
-      _removeProjectFromCache(id);
+      await _removeProjectFromCache(id);
     } catch (e) {
       if (e is DioException) {
         if (e.response?.statusCode == 404) {
@@ -241,39 +244,43 @@ class ProjectRepositoryImpl implements ProjectRepository {
           throw Exception("Vous n'avez pas les permissions nécessaires.");
         }
       }
+      developer.log('Erreur lors de la suppression du projet : ${e.toString()}');
       throw Exception('Erreur lors de la suppression du projet : ${e.toString()}');
     }
   }
 
-  // Méthodes privées pour la gestion du cache
-  List<Project> _getCachedProjects() {
-    final jsonString = _prefs.getString(_projectsCacheKey);
-    if (jsonString == null) return [];
+  Future<List<Project>> _getCachedProjects() async {
+    final jsonString = await _prefs.getString(_projectsCacheKey);
+    if (jsonString == null) {
+      return [];
+    }
     return Project.listFromJsonString(jsonString);
   }
 
-  void _updateProjectInCache(Project project) {
-    final projects = _getCachedProjects();
+  Future<void> _updateProjectInCache(Project project) async {
+    final projects = await _getCachedProjects();
     final index = projects.indexWhere((p) => p.id == project.id);
     if (index >= 0) {
       projects[index] = project;
     } else {
       projects.add(project);
     }
-    _prefs.setString(_projectsCacheKey, Project.listToJsonString(projects));
+    await _prefs.setString(_projectsCacheKey, Project.listToJsonString(projects));
   }
 
-  void _removeProjectFromCache(String id) {
-    final projects = _getCachedProjects();
+  Future<void> _removeProjectFromCache(String id) async {
+    final projects = await _getCachedProjects();
     projects.removeWhere((p) => p.id == id);
-    _prefs.setString(_projectsCacheKey, Project.listToJsonString(projects));
+    await _prefs.setString(_projectsCacheKey, Project.listToJsonString(projects));
   }
 
   Future<bool> _hasInternetConnection() async {
     try {
-      await _dio.get('/api/health');
+      // Faire une requête HEAD rapide vers le serveur pour vérifier la connexion
+      await _dio.head('/');
       return true;
-    } catch (_) {
+    } catch (e) {
+      developer.log('Erreur de connexion : $e');
       return false;
     }
   }
