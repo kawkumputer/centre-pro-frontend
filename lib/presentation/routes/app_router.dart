@@ -4,9 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../pages/auth/login_page.dart';
 import '../pages/auth/signup_page.dart';
 import '../pages/home/home_page.dart';
+import '../pages/projects/projects_page.dart';
+import '../pages/projects/project_form_page.dart';
+import '../pages/projects/project_details_page.dart';
 import '../../application/auth/auth_bloc.dart';
 import '../../application/auth/auth_state.dart';
 import '../../application/auth/auth_event.dart';
+import '../../domain/models/project.dart';
 
 class AppRouter {
   static GoRouter getRouter(AuthBloc authBloc) {
@@ -55,6 +59,28 @@ class AppRouter {
         GoRoute(
           path: '/home',
           builder: (context, state) => const HomePage(),
+        ),
+        GoRoute(
+          path: '/projects',
+          builder: (context, state) => const ProjectsPage(),
+        ),
+        GoRoute(
+          path: '/projects/new',
+          builder: (context, state) => const ProjectFormPage(),
+        ),
+        GoRoute(
+          path: '/projects/:id',
+          builder: (context, state) {
+            final project = state.extra as Project;
+            return ProjectDetailsPage(project: project);
+          },
+        ),
+        GoRoute(
+          path: '/projects/:id/edit',
+          builder: (context, state) {
+            final project = state.extra as Project;
+            return ProjectFormPage(project: project);
+          },
         ),
       ],
     );
