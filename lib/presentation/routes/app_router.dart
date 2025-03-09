@@ -6,37 +6,72 @@ import '../pages/auth/signup_page.dart';
 import '../pages/home/home_page.dart';
 import '../../application/auth/auth_bloc.dart';
 import '../../application/auth/auth_state.dart';
+import '../../application/auth/auth_event.dart';
 
 class AppRouter {
-  static final router = GoRouter(
-    initialLocation: '/login',
-    redirect: (context, state) {
-      final authState = context.read<AuthBloc>().state;
-      final isAuthenticated = authState is Authenticated;
-      final isLoginRoute = state.matchedLocation == '/login';
-      final isSignupRoute = state.matchedLocation == '/signup';
+  static GoRouter getRouter(AuthBloc authBloc) {
+    return GoRouter(
+      refreshListenable: _AuthStateNotifier(authBloc),
+      initialLocation: '/login',
+      redirect: (context, state) {
+        final authState = authBloc.state;
+        final isLoginRoute = state.matchedLocation == '/login';
+        final isSignupRoute = state.matchedLocation == '/signup';
 
-      if (!isAuthenticated && !isLoginRoute && !isSignupRoute) {
-        return '/login';
+        // Vérifier l'état d'authentification
+        if (authState is AuthInitial) {
+          authBloc.add(CheckAuthStatusEvent());
+          return null;
+        }
+
+        if (authState is AuthLoading) {
+          return null;
+        }
+
+        if (authState is AuthError) {
+          return '/login';
+        }
+
+        final isAuthenticated = authState is Authenticated;
+        
+        // Redirection selon l'état d'authentification
+        if (!isAuthenticated && !isLoginRoute && !isSignupRoute) {
+          return '/login';
+        }
+        if (isAuthenticated && (isLoginRoute || isSignupRoute)) {
+          return '/home';
+        }
+        return null;
+      },
+      routes: [
+        GoRoute(
+          path: '/login',
+          builder: (context, state) => LoginPage(),
+        ),
+        GoRoute(
+          path: '/signup',
+          builder: (context, state) => SignupPage(),
+        ),
+        GoRoute(
+          path: '/home',
+          builder: (context, state) => const HomePage(),
+        ),
+      ],
+    );
+  }
+}
+
+// Notifier pour rafraîchir le routeur quand l'état d'authentification change
+class _AuthStateNotifier extends ChangeNotifier {
+  final AuthBloc _authBloc;
+  AuthState? _previousState;
+
+  _AuthStateNotifier(this._authBloc) {
+    _authBloc.stream.listen((AuthState state) {
+      if (state != _previousState) {
+        _previousState = state;
+        notifyListeners();
       }
-      if (isAuthenticated && (isLoginRoute || isSignupRoute)) {
-        return '/home';
-      }
-      return null;
-    },
-    routes: [
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => LoginPage(),
-      ),
-      GoRoute(
-        path: '/signup',
-        builder: (context, state) => SignupPage(),
-      ),
-      GoRoute(
-        path: '/home',
-        builder: (context, state) => const HomePage(),
-      ),
-    ],
-  );
+    });
+  }
 }

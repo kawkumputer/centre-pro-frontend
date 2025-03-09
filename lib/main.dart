@@ -8,31 +8,54 @@ import 'domain/repositories/auth_repository.dart';
 import 'infrastructure/repositories/auth_repository_impl.dart';
 import 'presentation/routes/app_router.dart';
 import 'presentation/theme/app_theme.dart';
+import 'config/api_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Initialisation des dépendances
   final prefs = await SharedPreferences.getInstance();
-  final dio = Dio();
+  final dio = Dio()
+    ..options.baseUrl = ApiConfig.baseUrl
+    ..options.headers = ApiConfig.getHeaders()
+    ..interceptors.add(LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      error: true,
+    ));
   
-  final AuthRepository authRepository = AuthRepositoryImpl(dio, prefs);
+  // Initialisation du repository et du bloc
+  final authRepository = AuthRepositoryImpl(dio, prefs);
+  final authBloc = AuthBloc(authRepository)..add(CheckAuthStatusEvent());
   
-  runApp(MyApp(authRepository: authRepository));
+  runApp(MyApp(
+    authRepository: authRepository,
+    authBloc: authBloc,
+  ));
 }
 
 class MyApp extends StatelessWidget {
   final AuthRepository authRepository;
+  final AuthBloc authBloc;
 
-  const MyApp({super.key, required this.authRepository});
+  const MyApp({
+    super.key,
+    required this.authRepository,
+    required this.authBloc,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => AuthBloc(authRepository)..add(CheckAuthStatusEvent()),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(
+          value: authBloc,
+        ),
+      ],
       child: MaterialApp.router(
         title: 'Centre Éducatif',
         theme: AppTheme.lightTheme,
-        routerConfig: AppRouter.router,
+        routerConfig: AppRouter.getRouter(authBloc),
         debugShowCheckedModeBanner: false,
         builder: (context, child) {
           return MediaQuery(
